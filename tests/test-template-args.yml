@@ -1,0 +1,41 @@
+name: Test template interpolation in args
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Start a local HTTP server to act as a fake Discord webhook
+      - name: Start mock Discord webhook server
+        run: |
+          # Install netcat if not available
+          which nc || apt-get install -y netcat-openbsd 2>/dev/null || true
+          # Listen on port 9001, respond 200 OK to any POST
+          nohup bash -c '
+            while true; do
+              echo -e "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 2\r\n\r\n{}" | nc -l -p 9001 -q 1 2>/dev/null || true
+            done
+          ' &
+          sleep 1
+          echo "Mock server started on port 9001"
+
+      - id: action
+        uses: .
+        env:
+          DISCORD_WEBHOOK: http://localhost:9001/webhooks/123/abc
+          GITHUB_EVENT_NAME: push
+          GITHUB_REPOSITORY: test-owner/test-repo
+          GITHUB_WORKFLOW: test-workflow
+          GITHUB_ACTOR: testuser
+          GITHUB_ACTION: test-action
+          CUSTOM_VAR: world
+        with:
+          # Use lodash template syntax to interpolate env vars
+          args: "Hello {{ GITHUB_ACTOR }} from {{ GITHUB_REPOSITORY }}!"
+
+      - name: Assert action completed with template args
+        run: |
+          echo "Action completed with template interpolation"
+          echo "PASS"

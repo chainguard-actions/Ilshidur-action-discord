@@ -1,4 +1,4 @@
-name: Test basic Discord message sending
+name: Test template interpolation in message args
 on:
   workflow_dispatch:
 jobs:
@@ -9,22 +9,17 @@ jobs:
 
       - name: Start mock Discord webhook server
         run: |
-          # Create a simple HTTP server that accepts POST requests and records them
           mkdir -p /tmp/mock-discord
           cat > /tmp/mock-discord/server.py << 'EOF'
           import http.server
           import json
-          import os
-          import sys
 
           class WebhookHandler(http.server.BaseHTTPRequestHandler):
               def do_POST(self):
                   content_length = int(self.headers.get('Content-Length', 0))
                   body = self.rfile.read(content_length)
-                  # Save the received payload
                   with open('/tmp/mock-discord/received.json', 'wb') as f:
                       f.write(body)
-                  # Respond with Discord-like success response
                   response = json.dumps({"id": "123456789", "type": 0, "content": "test"})
                   self.send_response(200)
                   self.send_header('Content-Type', 'application/json')
@@ -32,35 +27,35 @@ jobs:
                   self.wfile.write(response.encode())
 
               def log_message(self, format, *args):
-                  pass  # Suppress logs
+                  pass
 
-          server = http.server.HTTPServer(('0.0.0.0', 9999), WebhookHandler)
+          server = http.server.HTTPServer(('0.0.0.0', 9998), WebhookHandler)
           server.serve_forever()
           EOF
           python3 /tmp/mock-discord/server.py &
           echo $! > /tmp/mock-discord/server.pid
-          # Wait for server to be ready
           sleep 2
-          echo "Mock server started on port 9999"
+          echo "Mock server started on port 9998"
 
-      - name: Run action with mock webhook
+      - name: Run action with template interpolation in args
         id: action
         uses: .
         with:
-          args: "Hello from GitHub Actions test"
+          # Use {{ GITHUB_ACTOR }} template syntax supported by the action
+          args: "Deployed by {{ GITHUB_ACTOR }} on {{ GITHUB_REPOSITORY }}"
         env:
-          DISCORD_WEBHOOK: "http://localhost:9999/webhooks/123/abc"
+          DISCORD_WEBHOOK: "http://localhost:9998/webhooks/123/abc"
 
       - name: Assert action succeeded
         run: |
           echo "outcome: ${{ steps.action.outcome }}"
           if [ "${{ steps.action.outcome }}" != "success" ]; then
-            echo "FAIL: expected action to succeed"
+            echo "FAIL: expected action to succeed with template interpolation"
             exit 1
           fi
           echo "PASS: action completed successfully"
 
-      - name: Assert message payload was sent
+      - name: Assert interpolated message was sent
         run: |
           if [ ! -f /tmp/mock-discord/received.json ]; then
             echo "FAIL: no payload received by mock server"
@@ -68,11 +63,20 @@ jobs:
           fi
           PAYLOAD=$(cat /tmp/mock-discord/received.json)
           echo "Received payload: $PAYLOAD"
-          if ! echo "$PAYLOAD" | grep -q "Hello from GitHub Actions test"; then
-            echo "FAIL: expected message not found in payload"
+          # The template {{ GITHUB_ACTOR }} should be replaced with the actual actor value
+          # It should NOT contain the raw template syntax anymore
+          if echo "$PAYLOAD" | grep -q '{{ GITHUB_ACTOR }}'; then
+            echo "FAIL: template was not interpolated - raw template syntax still present"
             exit 1
           fi
-          echo "PASS: correct message was sent to Discord webhook"
+          # The payload should contain the actual GITHUB_ACTOR value
+          ACTOR="${GITHUB_ACTOR}"
+          echo "Expected actor: $ACTOR"
+          if [ -n "$ACTOR" ] && ! echo "$PAYLOAD" | grep -q "$ACTOR"; then
+            echo "FAIL: interpolated actor value not found in payload"
+            exit 1
+          fi
+          echo "PASS: template interpolation worked correctly"
 
       - name: Stop mock server
         if: always()
