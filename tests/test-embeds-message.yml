@@ -1,0 +1,75 @@
+name: Test message with Discord embeds
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Start mock Discord webhook server
+        run: |
+          python3 -c "
+          import http.server, json
+
+          class Handler(http.server.BaseHTTPRequestHandler):
+              def do_POST(self):
+                  length = int(self.headers.get('Content-Length', 0))
+                  body = self.rfile.read(length)
+                  decoded = body.decode('utf-8', errors='replace')
+                  print('Received POST to:', self.path)
+                  print('Body:', decoded)
+                  # Write body to file so we can assert on it
+                  with open('/tmp/webhook_payload.json', 'w') as f:
+                      f.write(decoded)
+                  self.send_response(200)
+                  self.send_header('Content-Type', 'application/json')
+                  self.end_headers()
+                  self.wfile.write(json.dumps({'id': '123456789', 'content': 'test'}).encode())
+              def log_message(self, fmt, *args):
+                  print(fmt % args)
+
+          server = http.server.HTTPServer(('0.0.0.0', 9998), Handler)
+          print('Mock server listening on port 9998')
+          server.serve_forever()
+          " &
+          sleep 2
+          echo "Mock server started"
+
+      - name: Run action with embeds
+        id: action
+        uses: .
+        with:
+          args: "Deployment complete"
+        env:
+          DISCORD_WEBHOOK: "http://172.17.0.1:9998/webhook"
+          DISCORD_EMBEDS: '[{"title":"Build Status","description":"All tests passed","color":3066993}]'
+          GITHUB_EVENT_NAME: push
+          GITHUB_WORKFLOW: "Deploy Workflow"
+          GITHUB_ACTOR: "test-actor"
+          GITHUB_REPOSITORY: "test-owner/test-repo"
+
+      - name: Assert action succeeded
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" != "success" ]; then
+            echo "FAIL: expected action to succeed with embeds, but got outcome=$OUTCOME"
+            exit 1
+          fi
+          echo "PASS: action succeeded with embeds"
+
+      - name: Assert payload contains embeds
+        run: |
+          if [ ! -f /tmp/webhook_payload.json ]; then
+            echo "FAIL: webhook payload file not found - server may not have received the request"
+            exit 1
+          fi
+          PAYLOAD=$(cat /tmp/webhook_payload.json)
+          echo "Payload received: $PAYLOAD"
+          if ! echo "$PAYLOAD" | python3 -c "import sys, json; d=json.load(sys.stdin); assert 'embeds' in d, 'embeds key missing'; assert len(d['embeds']) > 0, 'embeds is empty'"; then
+            echo "FAIL: payload does not contain embeds"
+            exit 1
+          fi
+          echo "PASS: payload contains embeds as expected"
