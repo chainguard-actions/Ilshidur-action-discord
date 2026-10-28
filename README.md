@@ -6,11 +6,11 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 
 ## Versions
 
-| Version | Tag | Upstream commit |
-|---------|-----|-----------------|
-| 0.3.1 | [`0.3.1`](https://github.com/chainguard-actions/Ilshidur-action-discord/tree/0.3.1) | [`e3b94ca`](https://github.com/Ilshidur/action-discord/commit/e3b94ca7b528af5f7c617207d5090635248b0da2) |
-| 0.3.2 | [`0.3.2`](https://github.com/chainguard-actions/Ilshidur-action-discord/tree/0.3.2) | [`0c4b278`](https://github.com/Ilshidur/action-discord/commit/0c4b27844ba47cb1c7bee539c8eead5284ce9fa9) |
-| 0.4.0 | [`0.4.0`](https://github.com/chainguard-actions/Ilshidur-action-discord/tree/0.4.0) | [`d259407`](https://github.com/Ilshidur/action-discord/commit/d2594079a10f1d6739ee50a2471f0ca57418b554) |
+| Version | Tag | Upstream commit | Hardening report |
+|---------|-----|-----------------|------------------|
+| 0.3.1 | [`0.3.1`](https://github.com/chainguard-actions/Ilshidur-action-discord/tree/0.3.1) | [`e3b94ca`](https://github.com/Ilshidur/action-discord/commit/e3b94ca7b528af5f7c617207d5090635248b0da2) | [`HARDENING.md`](https://github.com/chainguard-actions/Ilshidur-action-discord/blob/0.3.1/HARDENING.md) |
+| 0.3.2 | [`0.3.2`](https://github.com/chainguard-actions/Ilshidur-action-discord/tree/0.3.2) | [`0c4b278`](https://github.com/Ilshidur/action-discord/commit/0c4b27844ba47cb1c7bee539c8eead5284ce9fa9) | [`HARDENING.md`](https://github.com/chainguard-actions/Ilshidur-action-discord/blob/0.3.2/HARDENING.md) |
+| 0.4.0 | [`0.4.0`](https://github.com/chainguard-actions/Ilshidur-action-discord/tree/0.4.0) | [`d259407`](https://github.com/Ilshidur/action-discord/commit/d2594079a10f1d6739ee50a2471f0ca57418b554) | [`HARDENING.md`](https://github.com/chainguard-actions/Ilshidur-action-discord/blob/0.4.0/HARDENING.md) |
 
 ## Privacy
 
